@@ -32,30 +32,74 @@ get_L (uint64_t quick_ktype)
 uint64_t shell_offset_cart[] = { 0, 1, 2, 5, 6, 9, 10, 16, 19 };
 uint64_t shell_offset_sph[]  = { 0, 1, 2, 5, 6, 9, 10, 15, 18 };
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 void
 normalize_coeff (const double *coeff, const double *aexp, size_t len,
                  uint64_t L, double norm, double *out)
+// {
+//     uint64_t d = 1;
+//     for (int l = 1; l <= L + 1; ++l)
+//         d *= (l << 1) - 1;
+//
+//     // contraction normalization
+//     double Q = 0;
+//     for (size_t i = 0; i < len; ++i)
+//         for (size_t j = 0; j < len; ++j) {
+//             Q += pow (sqrt (4 * aexp[i] * aexp[j] / (aexp[i] + aexp[j])),
+//                       (L + 1.5) * coeff[i] * coeff[j]);
+//         }
+//     Q = pow (Q, -0.5);
+//     Q *= sqrt (norm);
+//
+//     // primitive normalization
+//     for (size_t i = 0; i < len; ++i) {
+//         out[i] = sqrt (((1 << L) * pow (2 * aexp[i], L + 1.5)
+//                         / (pow (M_PI, 1.5) * d))
+//                        * coeff[i])
+//                  * Q;
+//     }
+// }
 {
-    uint64_t d = 1;
-    for (int l = 1; l <= L + 1; ++l)
-        d *= (l << 1) - 1;
+    /* Double factorial: dfact = (2*1-1) * (2*2-1) * ... * (2*L-1) */
+    double dfact = 1.0;
+    for (uint64_t l = 1; l <= L; l++) {
+        dfact *= 2.0 * (double)l - 1.0;
+    }
 
-    // contraction normalization
-    double Q = 0;
-    for (size_t i = 0; i < len; ++i)
-        for (size_t j = 0; j < len; ++j) {
-            Q += pow (sqrt (4 * aexp[i] * aexp[j] / (aexp[i] + aexp[j])),
-                      (L + 1.5) * coeff[i] * coeff[j]);
+    double Lp       = (double)L;
+    double exponent = Lp + 1.5;
+    double pi_term  = pow (M_PI, 1.5);
+    double two_L    = pow (2.0, Lp);
+
+    /* Primitive normalization */
+    for (size_t i = 0; i < len; i++) {
+        double e = aexp[i];
+        out[i]   = sqrt (two_L * pow (2.0 * e, exponent) / (pi_term * dfact))
+                   * coeff[i];
+    }
+
+    /* Contraction normalization */
+    double Q = 0.0;
+    for (size_t i = 0; i < len; i++) {
+        double c1 = coeff[i];
+        double e1 = aexp[i];
+        for (size_t j = 0; j < len; j++) {
+            double c2   = coeff[j];
+            double e2   = aexp[j];
+            double base = sqrt (4.0 * e1 * e2) / (e1 + e2);
+            Q += pow (base, exponent) * c1 * c2;
         }
+    }
+
     Q = pow (Q, -0.5);
     Q *= sqrt (norm);
 
-    // primitive normalization
-    for (size_t i = 0; i < len; ++i) {
-        out[i] = sqrt (((1 << L) * pow (2 * aexp[i], L + 1.5)
-                        / (pow (M_PI, 1.5) * d))
-                       * coeff[i])
-                 * Q;
+    /* Apply contraction normalization factor */
+    for (size_t i = 0; i < len; i++) {
+        out[i] *= Q;
     }
 }
 
