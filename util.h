@@ -1,6 +1,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -30,5 +31,32 @@ get_L (uint64_t quick_ktype)
 // 1s 2s 2p 3s 3p 4s 3d 4p
 uint64_t shell_offset_cart[] = { 0, 1, 2, 5, 6, 9, 10, 16, 19 };
 uint64_t shell_offset_sph[]  = { 0, 1, 2, 5, 6, 9, 10, 15, 18 };
+
+void
+normalize_coeff (const double *coeff, const double *aexp, size_t len,
+                 uint64_t L, double norm, double *out)
+{
+    uint64_t d = 1;
+    for (int l = 1; l <= L + 1; ++l)
+        d *= (l << 1) - 1;
+
+    // contraction normalization
+    double Q = 0;
+    for (size_t i = 0; i < len; ++i)
+        for (size_t j = 0; j < len; ++j) {
+            Q += pow (sqrt (4 * aexp[i] * aexp[j] / (aexp[i] + aexp[j])),
+                      (L + 1.5) * coeff[i] * coeff[j]);
+        }
+    Q = pow (Q, -0.5);
+    Q *= sqrt (norm);
+
+    // primitive normalization
+    for (size_t i = 0; i < len; ++i) {
+        out[i] = sqrt (((1 << L) * pow (2 * aexp[i], L + 1.5)
+                        / (pow (M_PI, 1.5) * d))
+                       * coeff[i])
+                 * Q;
+    }
+}
 
 #endif

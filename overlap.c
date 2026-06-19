@@ -66,13 +66,22 @@ main ()
 
     free (atomcnt);
 
+    double *coeff = malloc (3 * sizeof (double));
+
     for (size_t i = 0; i < nshell; ++i) {
-        checkCuestErrors (cuestAOShellCreate (
-            handle, 0, get_L (quick_basis.ktype[i]), quick_basis.kprim[i],
-            quick_basis.gcexpo[ifshell[i]], quick_basis.gccoeff[ifshell[i]],
-            aoshell_params, &shells[i]));
+        size_t   ifsh = ifshell[i];
+        uint64_t L    = get_L (quick_basis.ktype[i]);
+        normalize_coeff (dcoeff[ifsh], aexp[ifsh], 3, L, 1.0, coeff);
+        checkCuestErrors (
+            cuestAOShellCreate (handle, 0, L, quick_basis.kprim[i], aexp[ifsh],
+                                coeff, aoshell_params, &shells[i]));
+        // checkCuestErrors (cuestAOShellCreate (
+        //     handle, 0, get_L (quick_basis.ktype[i]), quick_basis.kprim[i],
+        //     quick_basis.gcexpo[ifshell[i]], quick_basis.gccoeff[ifshell[i]],
+        //     aoshell_params, &shells[i]));
     }
 
+    free (coeff);
     free (ifshell);
 
     checkCuestErrors (
@@ -257,7 +266,7 @@ main ()
     puts ("-------- S --------");
     for (int i = 0; i < nao; ++i) {
         for (int j = 0; j < nao; ++j)
-            printf ("%16.10f\n", buf[i * nao + j]);
+            printf ("%16.10f", buf[i * nao + j]);
         putchar ('\n');
     }
     puts ("------ END S ------");
