@@ -171,9 +171,9 @@ main ()
 
     for (size_t i = 0; i < natom; ++i) {
         size_t i3        = 3 * i;
-        xyz_flat[i3]     = xyz[i][0];
-        xyz_flat[i3 + 1] = xyz[i][1];
-        xyz_flat[i3 + 2] = xyz[i][2];
+        xyz_flat[i3]     = xyz_H2[i][0];
+        xyz_flat[i3 + 1] = xyz_H2[i][1];
+        xyz_flat[i3 + 2] = xyz_H2[i][2];
     }
 
     cuestAOPairList_t           pair_list;
