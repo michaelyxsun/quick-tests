@@ -26,4 +26,9 @@ get_L (uint64_t quick_ktype)
     }
 }
 
+// done up to row 4
+// 1s 2s 2p 3s 3p 4s 3d 4p
+uint64_t shell_offset_cart[] = { 0, 1, 2, 5, 6, 9, 10, 16, 19 };
+uint64_t shell_offset_sph[]  = { 0, 1, 2, 5, 6, 9, 10, 15, 18 };
+
 #endif

@@ -54,14 +54,24 @@ main ()
     checkCuestErrors (
         cuestParametersCreate (CUEST_AOSHELL_PARAMETERS, &aoshell_params));
 
-    for (size_t i = 0; i < nshell; ++i) {
-        uint64_t ifirst
-            = quick_basis.first_basis_function[quick_basis.katom[i] - 1] - 1;
+    size_t *ifshell = malloc (nshell * sizeof (size_t));
+    size_t *atomcnt = calloc (natom, sizeof (size_t));
 
+    for (size_t i = 0; i < nshell; ++i) {
+        uint64_t a = quick_basis.katom[i];
+        ifshell[i] = quick_basis.first_basis_function[a]
+                     + shell_offset_cart[atomcnt[a]++];
+    }
+
+    free (atomcnt);
+
+    for (size_t i = 0; i < nshell; ++i) {
         checkCuestErrors (cuestAOShellCreate (
             handle, 0, get_L (quick_basis.ktype[i]), quick_basis.kprim[i],
-            aexp[ifirst], dcoeff[ifirst], aoshell_params, &shells[i]));
+            aexp[ifshell[i]], dcoeff[ifshell[i]], aoshell_params, &shells[i]));
     }
+
+    free (ifshell);
 
     checkCuestErrors (
         cuestParametersDestroy (CUEST_AOSHELL_PARAMETERS, aoshell_params));
@@ -242,13 +252,13 @@ main ()
 
     cudaMemcpy (buf, d_S, d_S_siz, cudaMemcpyDeviceToHost);
 
-    printf ("-------- S --------");
+    puts ("-------- S --------");
     for (int i = 0; i < nao; ++i) {
         for (int j = 0; j < nao; ++j)
-            printf ("%16.10f", buf[i * nao + j]);
+            printf ("%16.10f\n", buf[i * nao + j]);
         putchar ('\n');
     }
-    printf ("------ END S ------");
+    puts ("------ END S ------");
 
     free (buf);
 
