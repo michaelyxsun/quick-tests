@@ -53,7 +53,7 @@ main ()
 
     for (size_t i = 0; i < nshell; ++i) {
         uint64_t ifirst
-            = quick_basis.first_basis_function[quick_basis.katom[i]];
+            = quick_basis.first_basis_function[quick_basis.katom[i] - 1] - 1;
 
         checkCuestErrors (cuestAOShellCreate (
             handle, 0, get_L (quick_basis.ktype[i]), quick_basis.kprim[i],

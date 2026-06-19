@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 /**
  * `quick_type` should not be 4=sp
@@ -19,6 +20,8 @@ get_L (uint64_t quick_ktype)
         case 10:
             return 3;
         default:
+            fprintf (stderr, "get_L(%llu): quick_ktype parameter invalid\n",
+                     quick_ktype);
             return 0;
     }
 }
