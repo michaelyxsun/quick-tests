@@ -210,9 +210,10 @@ main ()
                                   sizeof (uint64_t)));
 
     double *d_S;
-    if (cudaMalloc (&d_S, nao * nao * sizeof (double))) {
+    size_t  d_S_siz = nao * nao * sizeof (double);
+    if (cudaMalloc ((void **)&d_S, d_S_siz)) {
         fprintf (stderr, "Failed to allocate device buffer\n");
-        exit (EXIT_FAILURE);
+        goto persist_free;
     }
 
     cuestOverlapComputeParameters_t overlap_compute_params;
@@ -229,14 +230,38 @@ main ()
     checkCuestErrors (cuestParametersDestroy (CUEST_OVERLAPCOMPUTE_PARAMETERS,
                                               overlap_compute_params));
 
+    // ==================== //
+    // print overlap matrix //
+    // ==================== //
+
+    double *buf = malloc (nao * nao * sizeof (double));
+    if (!buf) {
+        fprintf (stderr, "malloc buf failed\n");
+        goto persist_free;
+    }
+
+    cudaMemcpy (buf, d_S, d_S_siz, cudaMemcpyDeviceToHost);
+
+    printf ("-------- S --------");
+    for (int i = 0; i < nao; ++i) {
+        for (int j = 0; j < nao; ++j)
+            printf ("%16.10f", buf[i * nao + j]);
+        putchar ('\n');
+    }
+    printf ("------ END S ------");
+
+    free (buf);
+
     if (cudaFree (d_S) != cudaSuccess) {
         fprintf (stderr, "cudaFree failed\n");
-        exit (EXIT_FAILURE);
+        goto persist_free;
     }
 
     // ========================= //
     // clean up persistent stuff //
     // ========================= //
+
+persist_free:
 
     free (persistWD);
     free (tmpWD);
