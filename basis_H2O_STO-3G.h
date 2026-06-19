@@ -1,0 +1,52 @@
+#ifndef BASIS_DEFINITION_H
+#define BASIS_DEFINITION_H
+
+#include <stdint.h>
+
+#define NBASIS 7
+#define NSHELL 4
+
+// static uint64_t ncontract[NBASIS] = { 3, 3, 3, 3, 3, 3, 3 };
+
+typedef struct {
+    uint64_t ncenter[NBASIS];
+    uint64_t first_basis_function[NSHELL];
+    uint64_t last_basis_function[NSHELL];
+    uint64_t katom[5];
+    uint64_t ktype[5];
+    uint64_t kprim[5];
+} quick_basis_t;
+
+static const quick_basis_t quick_basis = {
+    .ncenter              = { 1, 1, 1, 1, 1, 2, 3 },
+    .first_basis_function = { 1, 6, 7 },
+    .last_basis_function  = { 5, 6, 7 },
+    .katom                = { 1, 1, 1, 2, 3 },
+    .ktype                = { 1, 1, 3, 1, 1 },
+    .kprim                = { 3, 3, 3, 3, 3 },
+};
+
+// 3 is ncontract for every basis function
+static const double aexp[NBASIS][3] = {
+    { 0.130709321400E+03, 0.238088660500E+02, 0.644360831300E+01 },
+    { 0.503315131900E+01, 0.116959612500E+01, 0.380388960000E+00 },
+    { 0.503315131900E+01, 0.116959612500E+01, 0.380388960000E+00 },
+    { 0.503315131900E+01, 0.116959612500E+01, 0.380388960000E+00 },
+    { 0.503315131900E+01, 0.116959612500E+01, 0.380388960000E+00 },
+    { 0.342525091400E+01, 0.623913729800E+00, 0.168855404000E+00 },
+    { 0.342525091400E+01, 0.623913729800E+00, 0.168855404000E+00 },
+};
+static const double dcoeff[NBASIS][3] = {
+    { 0.154328967300E+00, 0.535328142300E+00, 0.444634542200E+00 },
+    { -0.999672291900E-01, 0.399512826100E+00, 0.700115468900E+00 },
+    { 0.155916275000E+00, 0.607683718600E+00, 0.391957393100E+00 },
+    { 0.155916275000E+00, 0.607683718600E+00, 0.391957393100E+00 },
+    { 0.155916275000E+00, 0.607683718600E+00, 0.391957393100E+00 },
+    { 0.154328967300E+00, 0.535328142300E+00, 0.444634542200E+00 },
+    { 0.154328967300E+00, 0.535328142300E+00, 0.444634542200E+00 },
+};
+
+#undef NBASIS
+#undef NSHELL
+
+#endif
