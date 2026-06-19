@@ -1,2 +1,5 @@
 .cache
 compile_commands.json
+
+libcuest-linux-x86_64-0.1.1.1_cuda13-archive
+main
