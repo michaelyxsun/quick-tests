@@ -58,9 +58,10 @@ main ()
     size_t *atomcnt = calloc (natom, sizeof (size_t));
 
     for (size_t i = 0; i < nshell; ++i) {
-        uint64_t a = quick_basis.katom[i];
+        uint64_t a = quick_basis.katom[i] - 1;
         ifshell[i] = quick_basis.first_basis_function[a]
-                     + shell_offset_cart[atomcnt[a]++];
+                     + shell_offset_cart[atomcnt[a]++] - 1;
+        printf ("ifshell[%zu]=%zu\n", i, ifshell[i]);
     }
 
     free (atomcnt);
@@ -68,7 +69,8 @@ main ()
     for (size_t i = 0; i < nshell; ++i) {
         checkCuestErrors (cuestAOShellCreate (
             handle, 0, get_L (quick_basis.ktype[i]), quick_basis.kprim[i],
-            aexp[ifshell[i]], dcoeff[ifshell[i]], aoshell_params, &shells[i]));
+            quick_basis.gcexpo[ifshell[i]], quick_basis.gccoeff[ifshell[i]],
+            aoshell_params, &shells[i]));
     }
 
     free (ifshell);
