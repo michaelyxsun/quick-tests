@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -71,8 +70,7 @@ main ()
     for (size_t i = 0; i < nshell; ++i) {
         size_t   ifsh = ifshell[i];
         uint64_t L    = get_L (quick_basis.ktype[i]);
-        // normalize_coeff (dcoeff[ifsh], aexp[ifsh], 3, L, 1.0, coeff);
-        normalize_coeff_cart (dcoeff[ifsh], aexp[ifsh], 3, L, 1.0, coeff);
+        normalize_coeff (dcoeff[ifsh], aexp[ifsh], 3, L, 1.0, coeff);
         checkCuestErrors (
             cuestAOShellCreate (handle, 0, L, quick_basis.kprim[i], aexp[ifsh],
                                 coeff, aoshell_params, &shells[i]));
@@ -169,7 +167,6 @@ main ()
     // set up pair list //
     // ================ //
 
-    assert (natom == 3);
     double *xyz_flat = malloc (natom * 3 * sizeof (double));
 
     for (size_t i = 0; i < natom; ++i) {

@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -169,7 +168,6 @@ main ()
     // set up pair list //
     // ================ //
 
-    assert (natom == 3);
     double *xyz_flat = malloc (natom * 3 * sizeof (double));
 
     for (size_t i = 0; i < natom; ++i) {
