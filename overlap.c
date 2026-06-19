@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -7,12 +8,14 @@
 #ifdef LOCAL
 #include "/Users/msun/rehs2026/cuest/libcuest-linux-sbsa-0.1.1.1_cuda13-archive/include/cuest.h"
 #else
+#include <cuda_runtime.h>
 #include <cuest.h>
 #endif
 
-#define CUESTAPI
+#include "constants.h"
 #include "helper_status.h"
 #include "helper_workspace.h"
+#include "molspec.h"
 #include "util.h"
 
 #include "basis_H2O_STO-3G.h"
@@ -81,17 +84,14 @@ main ()
         handle, natom, nshells_per_atom, shells, basis_params, persistWD,
         tmpWD, &basis));
 
-    cuestWorkspace_t *persist_wksp = allocateWorkspace (persistWD);
-    cuestWorkspace_t *tmp_wksp     = allocateWorkspace (tmpWD);
+    cuestWorkspace_t *persistBasisWorkspace = allocateWorkspace (persistWD);
+    cuestWorkspace_t *tmpBasisWorkspace     = allocateWorkspace (tmpWD);
 
-    free (persistWD);
-    free (tmpWD);
+    checkCuestErrors (cuestAOBasisCreate (
+        handle, natom, nshells_per_atom, shells, basis_params,
+        persistBasisWorkspace, tmpBasisWorkspace, &basis));
 
-    checkCuestErrors (cuestAOBasisCreate (handle, natom, nshells_per_atom,
-                                          shells, basis_params, persist_wksp,
-                                          tmp_wksp, &basis));
-
-    freeWorkspace (tmp_wksp);
+    freeWorkspace (tmpBasisWorkspace);
     checkCuestErrors (
         cuestParametersDestroy (CUEST_AOBASIS_PARAMETERS, basis_params));
 
@@ -143,12 +143,113 @@ main ()
     printf ("%-10s = %6llu\n", "max_L", query_max_L);
     printf ("%-10s = %6s\n", "is_pure", query_is_pure ? "true" : "false");
 
-    // ======== //
-    // clean up //
-    // ======== //
+    // ================ //
+    // set up pair list //
+    // ================ //
+
+    assert (natom == 3);
+    double *xyz_flat = malloc (natom * 3 * sizeof (double));
+
+    for (size_t i = 0; i < natom; ++i) {
+        size_t i3        = 3 * i;
+        xyz_flat[i3]     = xyz[i][0];
+        xyz_flat[i3 + 1] = xyz[i][1];
+        xyz_flat[i3 + 2] = xyz[i][2];
+    }
+
+    cuestAOPairList_t           pair_list;
+    cuestAOPairListParameters_t pair_list_params;
+    checkCuestErrors (cuestParametersCreate (CUEST_AOPAIRLIST_PARAMETERS,
+                                             &pair_list_params));
+    checkCuestErrors (cuestAOPairListCreateWorkspaceQuery (
+        handle, basis, natom, xyz_flat, 1e-14, pair_list_params, persistWD,
+        tmpWD, &pair_list));
+
+    cuestWorkspace_t *persistAOPairListWorkspace
+        = allocateWorkspace (persistWD);
+    cuestWorkspace_t *tmpAOPairListWorkspace = allocateWorkspace (tmpWD);
+
+    checkCuestErrors (cuestAOPairListCreate (
+        handle, basis, natom, xyz_flat, 1e-14, pair_list_params,
+        persistAOPairListWorkspace, tmpAOPairListWorkspace, &pair_list));
+    checkCuestErrors (cuestParametersDestroy (CUEST_AOPAIRLIST_PARAMETERS,
+                                              pair_list_params));
+    freeWorkspace (tmpAOPairListWorkspace);
+    free (xyz_flat);
+
+    // ========================= //
+    // one-electron integral plan //
+    // ========================= //
+
+    cuestOEIntPlan_t           oeint_plan;
+    cuestOEIntPlanParameters_t oeint_plan_params;
+    checkCuestErrors (cuestParametersCreate (CUEST_OEINTPLAN_PARAMETERS,
+                                             &oeint_plan_params));
+    checkCuestErrors (cuestOEIntPlanCreateWorkspaceQuery (
+        handle, basis, pair_list, oeint_plan_params, persistWD, tmpWD,
+        &oeint_plan));
+
+    cuestWorkspace_t *persistOEIntPlanWorkspace
+        = allocateWorkspace (persistWD);
+    cuestWorkspace_t *tmpOEIntPlanWorkspace = allocateWorkspace (tmpWD);
+    checkCuestErrors (cuestOEIntPlanCreate (
+        handle, basis, pair_list, oeint_plan_params, persistOEIntPlanWorkspace,
+        tmpOEIntPlanWorkspace, &oeint_plan));
+
+    checkCuestErrors (cuestParametersDestroy (CUEST_OEINTPLAN_PARAMETERS,
+                                              oeint_plan_params));
+    freeWorkspace (tmpOEIntPlanWorkspace);
+
+    // ============================== //
+    // compute one-electron integrals //
+    // ============================== //
+
+    uint64_t nao = 0;
+    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
+                                  CUEST_AOBASIS_NUM_AO, &nao,
+                                  sizeof (uint64_t)));
+
+    double *d_S;
+    if (cudaMalloc (&d_S, nao * nao * sizeof (double))) {
+        fprintf (stderr, "Failed to allocate device buffer\n");
+        exit (EXIT_FAILURE);
+    }
+
+    cuestOverlapComputeParameters_t overlap_compute_params;
+    checkCuestErrors (cuestParametersCreate (CUEST_OVERLAPCOMPUTE_PARAMETERS,
+                                             &overlap_compute_params));
+    checkCuestErrors (cuestOverlapComputeWorkspaceQuery (
+        handle, oeint_plan, overlap_compute_params, tmpWD, d_S));
+
+    cuestWorkspace_t *tmpSWorkspace = allocateWorkspace (tmpWD);
+    checkCuestErrors (cuestOverlapCompute (
+        handle, oeint_plan, overlap_compute_params, tmpSWorkspace, d_S));
+
+    freeWorkspace (tmpSWorkspace);
+    checkCuestErrors (cuestParametersDestroy (CUEST_OVERLAPCOMPUTE_PARAMETERS,
+                                              overlap_compute_params));
+
+    if (cudaFree (d_S) != cudaSuccess) {
+        fprintf (stderr, "cudaFree failed\n");
+        exit (EXIT_FAILURE);
+    }
+
+    // ========================= //
+    // clean up persistent stuff //
+    // ========================= //
+
+    free (persistWD);
+    free (tmpWD);
+
+    checkCuestErrors (cuestOEIntPlanDestroy (oeint_plan));
+    freeWorkspace (persistOEIntPlanWorkspace);
+
+    checkCuestErrors (cuestAOPairListDestroy (pair_list));
+    freeWorkspace (persistAOPairListWorkspace);
 
     checkCuestErrors (cuestAOBasisDestroy (basis));
-    freeWorkspace (persist_wksp);
+    freeWorkspace (persistBasisWorkspace);
+
     checkCuestErrors (cuestDestroy (handle));
 
     return 0;
