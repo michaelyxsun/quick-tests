@@ -11,6 +11,7 @@
 #endif
 
 #define CUESTAPI
+#include "helper_status.h"
 #include "helper_workspace.h"
 #include "util.h"
 
