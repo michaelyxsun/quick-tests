@@ -65,23 +65,25 @@ main ()
 
     free (atomcnt);
 
-    double *coeff = malloc (3 * sizeof (double));
+    // double *coeff = malloc (3 * sizeof (double));
 
     for (size_t i = 0; i < nshell; ++i) {
-        size_t   ifsh = ifshell[i];
-        uint64_t L    = get_L (quick_basis.ktype[i]);
+        // // manual normalization, same as pulling from QUEST
+        // size_t   ifsh = ifshell[i];
+        // uint64_t L    = get_L (quick_basis.ktype[i]);
         // normalize_coeff (dcoeff[ifsh], aexp[ifsh], 3, L, 1.0, coeff);
-        normalize_coeff_cart (dcoeff[ifsh], aexp[ifsh], 3, L, 1.0, coeff);
-        checkCuestErrors (
-            cuestAOShellCreate (handle, 0, L, quick_basis.kprim[i], aexp[ifsh],
-                                coeff, aoshell_params, &shells[i]));
-        // checkCuestErrors (cuestAOShellCreate (
-        //     handle, 0, get_L (quick_basis.ktype[i]), quick_basis.kprim[i],
-        //     quick_basis.gcexpo[ifshell[i]], quick_basis.gccoeff[ifshell[i]],
-        //     aoshell_params, &shells[i]));
+        // checkCuestErrors (
+        //     cuestAOShellCreate (handle, 0, L, quick_basis.kprim[i],
+        //     aexp[ifsh],
+        //                         coeff, aoshell_params, &shells[i]));
+
+        checkCuestErrors (cuestAOShellCreate (
+            handle, 0, get_L (quick_basis.ktype[i]), quick_basis.kprim[i],
+            quick_basis.gcexpo[ifshell[i]], quick_basis.gccoeff[ifshell[i]],
+            aoshell_params, &shells[i]));
     }
 
-    free (coeff);
+    // free (coeff);
     free (ifshell);
 
     checkCuestErrors (
