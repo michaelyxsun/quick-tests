@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -28,19 +29,57 @@ main ()
 
     cuestHandle_t           handle;
     cuestHandleParameters_t handle_params;
-    checkCuestErrors (
-        cuestParametersCreate (CUEST_HANDLE_PARAMETERS, &handle_params));
+    checkCuestErrors (cuestParametersCreate (CUEST_HANDLE_PARAMETERS, &handle_params));
     checkCuestErrors (cuestCreate (handle_params, &handle));
-    checkCuestErrors (
-        cuestParametersDestroy (CUEST_HANDLE_PARAMETERS, handle_params));
+    checkCuestErrors (cuestParametersDestroy (CUEST_HANDLE_PARAMETERS, handle_params));
 
     // ================ //
     // set up AO shells //
     // ================ //
 
-    const uint64_t natom               = 3;           // used for basis
+    // preprocess
+
+    size_t nsp = 0;
+    for (int i = 0; i < nshell; ++i)
+        nsp += (quick_basis.ktype[i] == 4);
+
+    nshell += nsp;
+    uint64_t *chk_katom_ktype_kprim = malloc (3 * nshell * sizeof (uint64_t));
+    uint64_t *katom                 = chk_katom_ktype_kprim;
+    uint64_t *ktype                 = chk_katom_ktype_kprim + nshell;
+    uint64_t *kprim                 = chk_katom_ktype_kprim + (nshell << 1);
+
+    for (int i = 0, j = 0, jend = nshell - nsp; i < nshell && j < jend; ++i, ++j) {
+        katom[i] = quick_basis.katom[j];
+        kprim[i] = quick_basis.kprim[j];
+
+        if (ktype[i] == 4) {
+            ktype[i] = 1;
+            ++i;
+            ktype[i] = 3;
+            katom[i] = quick_basis.katom[j];
+            kprim[i] = quick_basis.kprim[j];
+        } else {
+            ktype[i] = quick_basis.ktype[j];
+        }
+    }
+
+    // first_basis_function but instead first_basis_shell
+    size_t *ifshell = malloc (nshell * sizeof (size_t));
+    // atomcnt[a] is number of times atom a is listed in katom
+    size_t *atomcnt = calloc (natom, sizeof (size_t));
+
+    for (size_t i = 0; i < nshell; ++i) {
+        uint64_t a = katom[i] - 1;
+        ifshell[i] = quick_basis.first_basis_function[a] + shell_offset_cart[atomcnt[a]++] - 1;
+        printf ("ifshell[%zu]=%zu\n", i, ifshell[i]);
+    }
+
+    free (atomcnt);
+
     const uint64_t nshells_per_atom[3] = { 3, 1, 1 }; // used for basis
-    const uint64_t nshell              = 5;
+
+    // start making shells
 
     cuestAOShell_t *shells = malloc (nshell * sizeof (cuestAOShell_t));
     if (!shells) {
@@ -50,44 +89,29 @@ main ()
     }
 
     cuestAOShellParameters_t aoshell_params;
-    checkCuestErrors (
-        cuestParametersCreate (CUEST_AOSHELL_PARAMETERS, &aoshell_params));
-
-    size_t *ifshell = malloc (nshell * sizeof (size_t));
-    size_t *atomcnt = calloc (natom, sizeof (size_t));
-
-    for (size_t i = 0; i < nshell; ++i) {
-        uint64_t a = quick_basis.katom[i] - 1;
-        ifshell[i] = quick_basis.first_basis_function[a]
-                     + shell_offset_cart[atomcnt[a]++] - 1;
-        printf ("ifshell[%zu]=%zu\n", i, ifshell[i]);
-    }
-
-    free (atomcnt);
+    checkCuestErrors (cuestParametersCreate (CUEST_AOSHELL_PARAMETERS, &aoshell_params));
 
     // double *coeff = malloc (3 * sizeof (double));
 
     for (size_t i = 0; i < nshell; ++i) {
         // // manual normalization, same as pulling from QUEST
         // size_t   ifsh = ifshell[i];
-        // uint64_t L    = get_L (quick_basis.ktype[i]);
+        // uint64_t L    = get_L (ktype[i]);
         // normalize_coeff (dcoeff[ifsh], aexp[ifsh], 3, L, 1.0, coeff);
         // checkCuestErrors (
-        //     cuestAOShellCreate (handle, 0, L, quick_basis.kprim[i],
+        //     cuestAOShellCreate (handle, 0, L, kprim[i],
         //     aexp[ifsh],
         //                         coeff, aoshell_params, &shells[i]));
 
         checkCuestErrors (cuestAOShellCreate (
-            handle, 0, get_L (quick_basis.ktype[i]), quick_basis.kprim[i],
-            quick_basis.gcexpo[ifshell[i]], quick_basis.gccoeff[ifshell[i]],
-            aoshell_params, &shells[i]));
+            handle, 0, get_L (ktype[i]), kprim[i], quick_basis.gcexpo[ifshell[i]],
+            quick_basis.gccoeff[ifshell[i]], aoshell_params, &shells[i]));
     }
 
     // free (coeff);
     free (ifshell);
 
-    checkCuestErrors (
-        cuestParametersDestroy (CUEST_AOSHELL_PARAMETERS, aoshell_params));
+    checkCuestErrors (cuestParametersDestroy (CUEST_AOSHELL_PARAMETERS, aoshell_params));
 
     // ============ //
     // set up basis //
@@ -95,28 +119,22 @@ main ()
 
     cuestAOBasis_t           basis;
     cuestAOBasisParameters_t basis_params;
-    checkCuestErrors (
-        cuestParametersCreate (CUEST_AOBASIS_PARAMETERS, &basis_params));
+    checkCuestErrors (cuestParametersCreate (CUEST_AOBASIS_PARAMETERS, &basis_params));
 
-    cuestWorkspaceDescriptor_t *persistWD
-        = malloc (sizeof (cuestWorkspaceDescriptor_t));
-    cuestWorkspaceDescriptor_t *tmpWD
-        = malloc (sizeof (cuestWorkspaceDescriptor_t));
+    cuestWorkspaceDescriptor_t *persistWD = malloc (sizeof (cuestWorkspaceDescriptor_t));
+    cuestWorkspaceDescriptor_t *tmpWD     = malloc (sizeof (cuestWorkspaceDescriptor_t));
 
-    checkCuestErrors (cuestAOBasisCreateWorkspaceQuery (
-        handle, natom, nshells_per_atom, shells, basis_params, persistWD,
-        tmpWD, &basis));
+    checkCuestErrors (cuestAOBasisCreateWorkspaceQuery (handle, natom, nshells_per_atom, shells,
+                                                        basis_params, persistWD, tmpWD, &basis));
 
     cuestWorkspace_t *persistBasisWorkspace = allocateWorkspace (persistWD);
     cuestWorkspace_t *tmpBasisWorkspace     = allocateWorkspace (tmpWD);
 
-    checkCuestErrors (cuestAOBasisCreate (
-        handle, natom, nshells_per_atom, shells, basis_params,
-        persistBasisWorkspace, tmpBasisWorkspace, &basis));
+    checkCuestErrors (cuestAOBasisCreate (handle, natom, nshells_per_atom, shells, basis_params,
+                                          persistBasisWorkspace, tmpBasisWorkspace, &basis));
 
     freeWorkspace (tmpBasisWorkspace);
-    checkCuestErrors (
-        cuestParametersDestroy (CUEST_AOBASIS_PARAMETERS, basis_params));
+    checkCuestErrors (cuestParametersDestroy (CUEST_AOBASIS_PARAMETERS, basis_params));
 
     for (size_t i = 0; i < nshell; ++i)
         checkCuestErrors (cuestAOShellDestroy (shells[i]));
@@ -135,27 +153,20 @@ main ()
     uint64_t query_max_L      = 0;
     int32_t  query_is_pure    = 0;
 
-    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
-                                  CUEST_AOBASIS_NUM_ATOM, &query_natom,
+    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis, CUEST_AOBASIS_NUM_ATOM,
+                                  &query_natom, sizeof (uint64_t)));
+    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis, CUEST_AOBASIS_NUM_SHELL,
+                                  &query_nshell, sizeof (uint64_t)));
+    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis, CUEST_AOBASIS_NUM_AO, &query_nao,
                                   sizeof (uint64_t)));
-    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
-                                  CUEST_AOBASIS_NUM_SHELL, &query_nshell,
-                                  sizeof (uint64_t)));
-    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
-                                  CUEST_AOBASIS_NUM_AO, &query_nao,
-                                  sizeof (uint64_t)));
-    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
-                                  CUEST_AOBASIS_NUM_CART, &query_ncart,
-                                  sizeof (uint64_t)));
-    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
-                                  CUEST_AOBASIS_NUM_PRIMITIVE,
+    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis, CUEST_AOBASIS_NUM_CART,
+                                  &query_ncart, sizeof (uint64_t)));
+    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis, CUEST_AOBASIS_NUM_PRIMITIVE,
                                   &query_nprimitive, sizeof (uint64_t)));
-    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
-                                  CUEST_AOBASIS_MAX_L, &query_max_L,
+    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis, CUEST_AOBASIS_MAX_L, &query_max_L,
                                   sizeof (uint64_t)));
-    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
-                                  CUEST_AOBASIS_IS_PURE, &query_is_pure,
-                                  sizeof (int32_t)));
+    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis, CUEST_AOBASIS_IS_PURE,
+                                  &query_is_pure, sizeof (int32_t)));
 
     printf ("AO Basis from handle:\n");
     printf ("%-10s = %6llu\n", "natom", query_natom);
@@ -181,21 +192,17 @@ main ()
 
     cuestAOPairList_t           pair_list;
     cuestAOPairListParameters_t pair_list_params;
-    checkCuestErrors (cuestParametersCreate (CUEST_AOPAIRLIST_PARAMETERS,
-                                             &pair_list_params));
+    checkCuestErrors (cuestParametersCreate (CUEST_AOPAIRLIST_PARAMETERS, &pair_list_params));
     checkCuestErrors (cuestAOPairListCreateWorkspaceQuery (
-        handle, basis, natom, xyz_flat, 1e-14, pair_list_params, persistWD,
-        tmpWD, &pair_list));
+        handle, basis, natom, xyz_flat, 1e-14, pair_list_params, persistWD, tmpWD, &pair_list));
 
-    cuestWorkspace_t *persistAOPairListWorkspace
-        = allocateWorkspace (persistWD);
-    cuestWorkspace_t *tmpAOPairListWorkspace = allocateWorkspace (tmpWD);
+    cuestWorkspace_t *persistAOPairListWorkspace = allocateWorkspace (persistWD);
+    cuestWorkspace_t *tmpAOPairListWorkspace     = allocateWorkspace (tmpWD);
 
-    checkCuestErrors (cuestAOPairListCreate (
-        handle, basis, natom, xyz_flat, 1e-14, pair_list_params,
-        persistAOPairListWorkspace, tmpAOPairListWorkspace, &pair_list));
-    checkCuestErrors (cuestParametersDestroy (CUEST_AOPAIRLIST_PARAMETERS,
-                                              pair_list_params));
+    checkCuestErrors (cuestAOPairListCreate (handle, basis, natom, xyz_flat, 1e-14,
+                                             pair_list_params, persistAOPairListWorkspace,
+                                             tmpAOPairListWorkspace, &pair_list));
+    checkCuestErrors (cuestParametersDestroy (CUEST_AOPAIRLIST_PARAMETERS, pair_list_params));
     freeWorkspace (tmpAOPairListWorkspace);
     free (xyz_flat);
 
@@ -205,21 +212,17 @@ main ()
 
     cuestOEIntPlan_t           oeint_plan;
     cuestOEIntPlanParameters_t oeint_plan_params;
-    checkCuestErrors (cuestParametersCreate (CUEST_OEINTPLAN_PARAMETERS,
-                                             &oeint_plan_params));
+    checkCuestErrors (cuestParametersCreate (CUEST_OEINTPLAN_PARAMETERS, &oeint_plan_params));
     checkCuestErrors (cuestOEIntPlanCreateWorkspaceQuery (
-        handle, basis, pair_list, oeint_plan_params, persistWD, tmpWD,
-        &oeint_plan));
+        handle, basis, pair_list, oeint_plan_params, persistWD, tmpWD, &oeint_plan));
 
-    cuestWorkspace_t *persistOEIntPlanWorkspace
-        = allocateWorkspace (persistWD);
-    cuestWorkspace_t *tmpOEIntPlanWorkspace = allocateWorkspace (tmpWD);
-    checkCuestErrors (cuestOEIntPlanCreate (
-        handle, basis, pair_list, oeint_plan_params, persistOEIntPlanWorkspace,
-        tmpOEIntPlanWorkspace, &oeint_plan));
+    cuestWorkspace_t *persistOEIntPlanWorkspace = allocateWorkspace (persistWD);
+    cuestWorkspace_t *tmpOEIntPlanWorkspace     = allocateWorkspace (tmpWD);
+    checkCuestErrors (cuestOEIntPlanCreate (handle, basis, pair_list, oeint_plan_params,
+                                            persistOEIntPlanWorkspace, tmpOEIntPlanWorkspace,
+                                            &oeint_plan));
 
-    checkCuestErrors (cuestParametersDestroy (CUEST_OEINTPLAN_PARAMETERS,
-                                              oeint_plan_params));
+    checkCuestErrors (cuestParametersDestroy (CUEST_OEINTPLAN_PARAMETERS, oeint_plan_params));
     freeWorkspace (tmpOEIntPlanWorkspace);
 
     // ============================== //
@@ -227,9 +230,8 @@ main ()
     // ============================== //
 
     uint64_t nao = 0;
-    checkCuestErrors (cuestQuery (handle, CUEST_AOBASIS, basis,
-                                  CUEST_AOBASIS_NUM_AO, &nao,
-                                  sizeof (uint64_t)));
+    checkCuestErrors (
+        cuestQuery (handle, CUEST_AOBASIS, basis, CUEST_AOBASIS_NUM_AO, &nao, sizeof (uint64_t)));
 
     double *d_S;
     size_t  d_S_siz = nao * nao * sizeof (double);
@@ -239,18 +241,18 @@ main ()
     }
 
     cuestOverlapComputeParameters_t overlap_compute_params;
-    checkCuestErrors (cuestParametersCreate (CUEST_OVERLAPCOMPUTE_PARAMETERS,
-                                             &overlap_compute_params));
-    checkCuestErrors (cuestOverlapComputeWorkspaceQuery (
-        handle, oeint_plan, overlap_compute_params, tmpWD, d_S));
+    checkCuestErrors (
+        cuestParametersCreate (CUEST_OVERLAPCOMPUTE_PARAMETERS, &overlap_compute_params));
+    checkCuestErrors (
+        cuestOverlapComputeWorkspaceQuery (handle, oeint_plan, overlap_compute_params, tmpWD, d_S));
 
     cuestWorkspace_t *tmpSWorkspace = allocateWorkspace (tmpWD);
-    checkCuestErrors (cuestOverlapCompute (
-        handle, oeint_plan, overlap_compute_params, tmpSWorkspace, d_S));
+    checkCuestErrors (
+        cuestOverlapCompute (handle, oeint_plan, overlap_compute_params, tmpSWorkspace, d_S));
 
     freeWorkspace (tmpSWorkspace);
-    checkCuestErrors (cuestParametersDestroy (CUEST_OVERLAPCOMPUTE_PARAMETERS,
-                                              overlap_compute_params));
+    checkCuestErrors (
+        cuestParametersDestroy (CUEST_OVERLAPCOMPUTE_PARAMETERS, overlap_compute_params));
 
     // ==================== //
     // print overlap matrix //
@@ -296,6 +298,8 @@ persist_free:
 
     checkCuestErrors (cuestAOBasisDestroy (basis));
     freeWorkspace (persistBasisWorkspace);
+
+    free (chk_katom_ktype_kprim);
 
     checkCuestErrors (cuestDestroy (handle));
 

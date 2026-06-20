@@ -6,6 +6,8 @@
 #define NBASIS 7
 #define NSHELL 4
 
+static const uint64_t natom  = 3;
+uint64_t              nshell = 5;
 // static uint64_t ncontract[NBASIS] = { 3, 3, 3, 3, 3, 3, 3 };
 
 typedef struct {
