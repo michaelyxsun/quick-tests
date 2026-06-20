@@ -71,8 +71,9 @@ main ()
         } else {
             ktype[i] = quick_basis.ktype[j];
         }
+    }
 
-        // init ifshell (separate)
+    for (size_t i = 0; i < nshell; ++i) {
         uint64_t a = katom[i] - 1;
         ifshell[i]
             = quick_basis.first_basis_function[a] + shell_offset_cart[nshells_per_atom[a]++] - 1;
