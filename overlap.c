@@ -53,7 +53,7 @@ main ()
         katom[i] = quick_basis.katom[j];
         kprim[i] = quick_basis.kprim[j];
 
-        if (ktype[i] == 4) {
+        if (quick_basis.ktype[i] == 4) {
             ktype[i] = 1;
             ++i;
             ktype[i] = 3;

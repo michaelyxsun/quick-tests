@@ -6,9 +6,9 @@
 #define NBASIS 7
 #define NSHELL 4
 
-static const uint64_t natom  = 3;
-uint64_t              nshell = 5;
-// static uint64_t ncontract[NBASIS] = { 3, 3, 3, 3, 3, 3, 3 };
+static const uint64_t natom = 3;
+// uint64_t              nshell = 5;
+uint64_t nshell = 4;
 
 typedef struct {
     uint64_t ncenter[NBASIS];
@@ -25,9 +25,12 @@ static const quick_basis_t quick_basis = {
     .ncenter              = { 1, 1, 1, 1, 1, 2, 3 },
     .first_basis_function = { 1, 6, 7 },
     .last_basis_function  = { 5, 6, 7 },
-    .katom                = { 1, 1, 1, 2, 3 },
-    .ktype                = { 1, 1, 3, 1, 1 },
-    .kprim                = { 3, 3, 3, 3, 3 },
+    // .katom                = { 1, 1, 1, 2, 3 },
+    // .ktype                = { 1, 1, 3, 1, 1 },
+    // .kprim                = { 3, 3, 3, 3, 3 },
+    .katom                = { 1, 1, 2, 3 },
+    .ktype                = { 1, 4, 1, 1 },
+    .kprim                = { 3, 3, 3, 3 },
     .gcexpo = {
         { 0.130709321400E+03, 0.238088660500E+02, 0.644360831300E+01 }, // O 1s
         { 0.503315131900E+01, 0.116959612500E+01, 0.380388960000E+00 }, // O 2s
