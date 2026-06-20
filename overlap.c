@@ -37,7 +37,7 @@ main ()
     // set up AO shells //
     // ================ //
 
-    // preprocess
+    // preprocess and correct for SP shells
 
     size_t nsp = 0;
     for (int i = 0; i < nshell; ++i)
@@ -45,11 +45,20 @@ main ()
 
     nshell += nsp;
     uint64_t *chk_katom_ktype_kprim = malloc (3 * nshell * sizeof (uint64_t));
-    uint64_t *katom                 = chk_katom_ktype_kprim;
-    uint64_t *ktype                 = chk_katom_ktype_kprim + nshell;
-    uint64_t *kprim                 = chk_katom_ktype_kprim + (nshell << 1);
+    // expanded arrays (SP -> S and P)
+    uint64_t *katom = chk_katom_ktype_kprim;
+    uint64_t *ktype = chk_katom_ktype_kprim + nshell;
+    uint64_t *kprim = chk_katom_ktype_kprim + (nshell << 1);
 
-    for (int i = 0, j = 0, jend = nshell - nsp; i < nshell && j < jend; ++i, ++j) {
+    // needed for basis
+
+    // first_basis_function but instead first_basis_shell
+    size_t *ifshell = malloc (nshell * sizeof (size_t));
+    // nshells_per_atom[a] is number of shells atom `a` has.
+    // This is the same as the number of times it appears in `katom`.
+    uint64_t *nshells_per_atom = calloc (natom, sizeof (uint64_t));
+
+    for (size_t i = 0, j = 0, jend = nshell - nsp; i < nshell && j < jend; ++i, ++j) {
         katom[i] = quick_basis.katom[j];
         kprim[i] = quick_basis.kprim[j];
 
@@ -62,22 +71,13 @@ main ()
         } else {
             ktype[i] = quick_basis.ktype[j];
         }
-    }
 
-    // first_basis_function but instead first_basis_shell
-    size_t *ifshell = malloc (nshell * sizeof (size_t));
-    // atomcnt[a] is number of times atom a is listed in katom
-    size_t *atomcnt = calloc (natom, sizeof (size_t));
-
-    for (size_t i = 0; i < nshell; ++i) {
+        // init ifshell (separate)
         uint64_t a = katom[i] - 1;
-        ifshell[i] = quick_basis.first_basis_function[a] + shell_offset_cart[atomcnt[a]++] - 1;
-        printf ("ifshell[%zu]=%zu\n", i, ifshell[i]);
+        ifshell[i]
+            = quick_basis.first_basis_function[a] + shell_offset_cart[nshells_per_atom[a]++] - 1;
+        // printf ("ifshell[%zu]=%zu\n", j, ifshell[i]);
     }
-
-    free (atomcnt);
-
-    const uint64_t nshells_per_atom[3] = { 3, 1, 1 }; // used for basis
 
     // start making shells
 
@@ -110,6 +110,7 @@ main ()
 
     // free (coeff);
     free (ifshell);
+    free (chk_katom_ktype_kprim);
 
     checkCuestErrors (cuestParametersDestroy (CUEST_AOSHELL_PARAMETERS, aoshell_params));
 
@@ -140,6 +141,7 @@ main ()
         checkCuestErrors (cuestAOShellDestroy (shells[i]));
 
     free (shells);
+    free (nshells_per_atom);
 
     // ================= //
     // query information //
@@ -298,8 +300,6 @@ persist_free:
 
     checkCuestErrors (cuestAOBasisDestroy (basis));
     freeWorkspace (persistBasisWorkspace);
-
-    free (chk_katom_ktype_kprim);
 
     checkCuestErrors (cuestDestroy (handle));
 
