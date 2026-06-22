@@ -17,7 +17,8 @@
 #include "helper_workspace.h"
 #include "util.h"
 
-#define get(arr, i, j, nrows) arr[(i) + (j) * (nrows)]
+#define get(arr, i, j, ncols)      arr[(j) + (i) * (ncols)]
+#define get_row_ptr(arr, i, ncols) (arr + (i) * (ncols))
 
 void
 cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
@@ -62,14 +63,14 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
     puts ("gcexpo:");
     for (int i = 0; i < 7; ++i) {
         for (int j = 0; j < 3; ++j)
-            printf ("%f ", get (gcexpo, i, j, 7));
+            printf ("%f ", get (gcexpo, i, j, 3));
         putchar ('\n');
     }
 
     puts ("gccoeff:");
     for (int i = 0; i < 7; ++i) {
         for (int j = 0; j < 3; ++j)
-            printf ("%f ", get (gccoeff, i, j, 7));
+            printf ("%f ", get (gccoeff, i, j, 3));
         putchar ('\n');
     }
 
@@ -177,9 +178,9 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
         //     aexp[ifsh],
         //                         coeff, aoshell_params, &shells[i]));
 
-        checkCuestErrors (cuestAOShellCreate (handle, 0, get_L (ktype[i]), kprim[i],
-                                              gcexpo + ifshell[i], gccoeff + ifshell[i],
-                                              aoshell_params, &shells[i]));
+        checkCuestErrors (cuestAOShellCreate (
+            handle, 0, get_L (ktype[i]), kprim[i], get_row_ptr (gcexpo, ifshell[i], 3),
+            get_row_ptr (gccoeff, ifshell[i], 3), aoshell_params, &shells[i]));
     }
 
     // free (coeff);
