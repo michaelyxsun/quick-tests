@@ -260,7 +260,7 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
                                              &pair_list));
     checkCuestErrors (cuestParametersDestroy (CUEST_AOPAIRLIST_PARAMETERS, pair_list_params));
     freeWorkspace (tmpAOPairListWorkspace);
-    free (xyz);
+    // free (xyz_flat);
 
     // ========================= //
     // one-electron integral plan //
@@ -356,4 +356,6 @@ persist_free:
     freeWorkspace (persistBasisWorkspace);
 
     checkCuestErrors (cuestDestroy (handle));
+
+    puts ("bye from c");
 }
