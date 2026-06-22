@@ -235,30 +235,32 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
     // set up pair list //
     // ================ //
 
-    double *xyz_flat = malloc (natom * 3 * sizeof (double));
-
-    for (size_t i = 0; i < natom; ++i) {
-        size_t i3        = 3 * i;
-        xyz_flat[i3]     = xyz[i][0];
-        xyz_flat[i3 + 1] = xyz[i][1];
-        xyz_flat[i3 + 2] = xyz[i][2];
-    }
+    // xyz is flat already
+    //
+    // double *xyz_flat = malloc (natom * 3 * sizeof (double));
+    //
+    // for (size_t i = 0; i < natom; ++i) {
+    //     size_t i3        = 3 * i;
+    //     xyz_flat[i3]     = xyz[i][0];
+    //     xyz_flat[i3 + 1] = xyz[i][1];
+    //     xyz_flat[i3 + 2] = xyz[i][2];
+    // }
 
     cuestAOPairList_t           pair_list;
     cuestAOPairListParameters_t pair_list_params;
     checkCuestErrors (cuestParametersCreate (CUEST_AOPAIRLIST_PARAMETERS, &pair_list_params));
     checkCuestErrors (cuestAOPairListCreateWorkspaceQuery (
-        handle, basis, natom, xyz_flat, 1e-14, pair_list_params, persistWD, tmpWD, &pair_list));
+        handle, basis, natom, xyz, 1e-14, pair_list_params, persistWD, tmpWD, &pair_list));
 
     cuestWorkspace_t *persistAOPairListWorkspace = allocateWorkspace (persistWD);
     cuestWorkspace_t *tmpAOPairListWorkspace     = allocateWorkspace (tmpWD);
 
-    checkCuestErrors (cuestAOPairListCreate (handle, basis, natom, xyz_flat, 1e-14,
-                                             pair_list_params, persistAOPairListWorkspace,
-                                             tmpAOPairListWorkspace, &pair_list));
+    checkCuestErrors (cuestAOPairListCreate (handle, basis, natom, xyz, 1e-14, pair_list_params,
+                                             persistAOPairListWorkspace, tmpAOPairListWorkspace,
+                                             &pair_list));
     checkCuestErrors (cuestParametersDestroy (CUEST_AOPAIRLIST_PARAMETERS, pair_list_params));
     freeWorkspace (tmpAOPairListWorkspace);
-    free (xyz_flat);
+    free (xyz);
 
     // ========================= //
     // one-electron integral plan //
