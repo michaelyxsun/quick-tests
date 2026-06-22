@@ -19,8 +19,9 @@
 
 void
 cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
-                  uint64_t *first_basis_function, uint64_t *last_basis_function, uint64_t *katom,
-                  uint64_t *ktype, uint64_t *kprim, double **gcexpo, double **gccoeff, double **xyz)
+                  uint64_t *first_basis_function, uint64_t *last_basis_function, uint64_t *katom_,
+                  uint64_t *ktype_, uint64_t *kprim_, double **gcexpo, double **gccoeff,
+                  double **xyz)
 {
     // ============= //
     // set up handle //
@@ -40,7 +41,7 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
 
     size_t nsp = 0;
     for (int i = 0; i < nshell; ++i)
-        nsp += (ktype[i] == 4);
+        nsp += (ktype_[i] == 4);
 
     nshell += nsp;
     uint64_t *chk_katom_ktype_kprim = malloc (3 * nshell * sizeof (uint64_t));
@@ -58,17 +59,17 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
     uint64_t *nshells_per_atom = calloc (natom, sizeof (uint64_t));
 
     for (size_t i = 0, j = 0, jend = nshell - nsp; i < nshell && j < jend; ++i, ++j) {
-        katom[i] = katom[j];
-        kprim[i] = kprim[j];
+        katom[i] = katom_[j];
+        kprim[i] = kprim_[j];
 
-        if (ktype[i] == 4) {
+        if (ktype_[i] == 4) {
             ktype[i] = 1;
             ++i;
             ktype[i] = 3;
-            katom[i] = katom[j];
-            kprim[i] = kprim[j];
+            katom[i] = katom_[j];
+            kprim[i] = kprim_[j];
         } else {
-            ktype[i] = ktype[j];
+            ktype[i] = ktype_[j];
         }
     }
 
