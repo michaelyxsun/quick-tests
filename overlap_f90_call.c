@@ -73,6 +73,28 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
         putchar ('\n');
     }
 
+    puts ("xyz:");
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j)
+            printf ("%f ", get (xyz, i, j, 3));
+        putchar ('\n');
+    }
+
+    puts ("gcexpo flat:");
+    for (int i = 0; i < 7 * 3; ++i)
+        printf ("%f ", gcexpo[i]);
+    putchar ('\n');
+
+    puts ("gccoeff flat:");
+    for (int i = 0; i < 7 * 3; ++i)
+        printf ("%f ", gccoeff[i]);
+    putchar ('\n');
+
+    puts ("xyz flat:");
+    for (int i = 0; i < 7 * 3; ++i)
+        printf ("%f ", xyz[i]);
+    putchar ('\n');
+
     puts ("------ END DUMP ------");
 
     // ============= //
