@@ -28,44 +28,44 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
     printf ("natom=%llu\n", natom);
     printf ("natom=%llu\n", nshell);
 
-    puts ("ncenter:\n");
+    puts ("ncenter:");
     for (int i = 0; i < 7; ++i)
         printf ("%llu ", ncenter[i]);
     putchar ('\n');
 
-    puts ("first_basis_function:\n");
+    puts ("first_basis_function:");
     for (int i = 0; i < 3; ++i)
         printf ("%llu ", first_basis_function[i]);
     putchar ('\n');
 
-    puts ("last_basis_function:\n");
+    puts ("last_basis_function:");
     for (int i = 0; i < 3; ++i)
         printf ("%llu ", last_basis_function[i]);
     putchar ('\n');
 
-    puts ("katom_:\n");
+    puts ("katom_:");
     for (int i = 0; i < 4; ++i)
         printf ("%llu ", katom_[i]);
     putchar ('\n');
 
-    puts ("ktype_:\n");
+    puts ("ktype_:");
     for (int i = 0; i < 4; ++i)
         printf ("%llu ", ktype_[i]);
     putchar ('\n');
 
-    puts ("kprim_:\n");
+    puts ("kprim_:");
     for (int i = 0; i < 4; ++i)
         printf ("%llu ", kprim_[i]);
     putchar ('\n');
 
-    puts ("gcexpo:\n");
+    puts ("gcexpo:");
     for (int i = 0; i < 7; ++i) {
         for (int j = 0; j < 3; ++j)
             printf ("%f ", gcexpo[i][j]);
         putchar ('\n');
     }
 
-    puts ("gccoeff:\n");
+    puts ("gccoeff:");
     for (int i = 0; i < 7; ++i) {
         for (int j = 0; j < 3; ++j)
             printf ("%f ", gccoeff[i][j]);
