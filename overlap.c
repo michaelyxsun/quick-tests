@@ -12,7 +12,6 @@
 #include <cuest.h>
 #endif
 
-#include "constants.h"
 #include "helper_status.h"
 #include "helper_workspace.h"
 #include "molspec.h"
