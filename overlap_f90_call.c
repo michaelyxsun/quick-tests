@@ -91,7 +91,7 @@ cuest_init_basis (uint64_t natom, uint64_t nshell, uint64_t *ncenter,
     putchar ('\n');
 
     puts ("xyz flat:");
-    for (int i = 0; i < 7 * 3; ++i)
+    for (int i = 0; i < 3 * 3; ++i)
         printf ("%f ", xyz[i]);
     putchar ('\n');
 
